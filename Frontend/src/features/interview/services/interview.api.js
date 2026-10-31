@@ -1,7 +1,8 @@
-import axios from "axios";
+import axios from "axios"
+import { getErrorMessage } from "../../../utils/api-error"
 
 const api = axios.create({
-    baseURL: "https://interviewpro-k4p3.onrender.com/",
+    baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
     withCredentials: true,
 })
 
@@ -13,8 +14,10 @@ export const generateInterviewReport = async ({ jobDescription, selfDescription,
 
     const formData = new FormData()
     formData.append("jobDescription", jobDescription)
-    formData.append("selfDescription", selfDescription)
-    formData.append("resume", resumeFile)
+    formData.append("selfDescription", selfDescription || "")
+    if (resumeFile) {
+        formData.append("resume", resumeFile)
+    }
 
     const response = await api.post("/api/interview/", formData, {
         headers: {

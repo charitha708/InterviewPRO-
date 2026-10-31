@@ -1,4 +1,5 @@
 import { getAllInterviewReports, generateInterviewReport, getInterviewReportById, generateResumePdf } from "../services/interview.api"
+import { getErrorMessage } from "../../../utils/api-error"
 import { useContext, useEffect } from "react"
 import { InterviewContext } from "../interview.context"
 import { useParams } from "react-router"
@@ -15,64 +16,73 @@ export const useInterview = () => {
 
     const { loading, setLoading, report, setReport, reports, setReports } = context
 
+    /**
+     * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+     */
     const generateReport = async ({ jobDescription, selfDescription, resumeFile }) => {
         setLoading(true)
-        let response = null
         try {
-            response = await generateInterviewReport({ jobDescription, selfDescription, resumeFile })
+            const response = await generateInterviewReport({ jobDescription, selfDescription, resumeFile })
             setReport(response.interviewReport)
+            return { success: true, data: response.interviewReport }
         } catch (error) {
-            console.log(error)
+            return { success: false, error: getErrorMessage(error) }
         } finally {
             setLoading(false)
         }
-
-        return response.interviewReport
     }
 
-    const getReportById = async (interviewId) => {
+    /**
+     * @returns {Promise<{ success: boolean, data?: object, error?: string }>}
+     */
+    const getReportById = async (id) => {
         setLoading(true)
-        let response = null
         try {
-            response = await getInterviewReportById(interviewId)
+            const response = await getInterviewReportById(id)
             setReport(response.interviewReport)
+            return { success: true, data: response.interviewReport }
         } catch (error) {
-            console.log(error)
+            setReport(null)
+            return { success: false, error: getErrorMessage(error) }
         } finally {
             setLoading(false)
         }
-        return response.interviewReport
     }
 
+    /**
+     * @returns {Promise<{ success: boolean, data?: array, error?: string }>}
+     */
     const getReports = async () => {
         setLoading(true)
-        let response = null
         try {
-            response = await getAllInterviewReports()
+            const response = await getAllInterviewReports()
             setReports(response.interviewReports)
+            return { success: true, data: response.interviewReports }
         } catch (error) {
-            console.log(error)
+            return { success: false, error: getErrorMessage(error) }
         } finally {
             setLoading(false)
         }
-
-        return response.interviewReports
     }
 
+    /**
+     * @returns {Promise<{ success: boolean, error?: string }>}
+     */
     const getResumePdf = async (interviewReportId) => {
         setLoading(true)
-        let response = null
         try {
-            response = await generateResumePdf({ interviewReportId })
+            const response = await generateResumePdf({ interviewReportId })
             const url = window.URL.createObjectURL(new Blob([ response ], { type: "application/pdf" }))
             const link = document.createElement("a")
             link.href = url
             link.setAttribute("download", `resume_${interviewReportId}.pdf`)
             document.body.appendChild(link)
             link.click()
-        }
-        catch (error) {
-            console.log(error)
+            link.remove()
+            window.URL.revokeObjectURL(url)
+            return { success: true }
+        } catch (error) {
+            return { success: false, error: getErrorMessage(error) }
         } finally {
             setLoading(false)
         }

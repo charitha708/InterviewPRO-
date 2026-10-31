@@ -2,20 +2,56 @@ import React, { useState, useRef } from 'react'
 import "../style/home.scss"
 import { useInterview } from '../hooks/useInterview.js'
 import { useNavigate } from 'react-router'
+import { useAuth } from '../../auth/hooks/useAuth.js'
+import "../../auth/auth.form.scss"
 
 const Home = () => {
 
     const { loading, generateReport,reports } = useInterview()
+    const { user, handleLogout } = useAuth()
     const [ jobDescription, setJobDescription ] = useState("")
     const [ selfDescription, setSelfDescription ] = useState("")
+    const [ error, setError ] = useState("")
     const resumeInputRef = useRef()
 
     const navigate = useNavigate()
 
     const handleGenerateReport = async () => {
-        const resumeFile = resumeInputRef.current.files[ 0 ]
-        const data = await generateReport({ jobDescription, selfDescription, resumeFile })
-        navigate(`/interview/${data._id}`)
+        const resumeFile = resumeInputRef.current?.files[ 0 ]
+
+        // Validate against the backend contract: job description is always
+        // required, and either a resume PDF or a self description.
+        if (!jobDescription.trim()) {
+            setError("Please paste the target job description first.")
+            return
+        }
+
+        if (!resumeFile && !selfDescription.trim()) {
+            setError("Please upload a resume PDF or add a short self description.")
+            return
+        }
+
+        setError("")
+
+        const result = await generateReport({ jobDescription, selfDescription, resumeFile })
+
+        if (result.success) {
+            navigate(`/interview/${result.data._id}`)
+        } else {
+            setError(result.error)
+        }
+    }
+
+    const handleLogoutClick = async () => {
+        const result = await handleLogout()
+
+        // End the session and return to the login screen once the
+        // cookie is cleared and the token is blacklisted.
+        if (result.success) {
+            navigate('/login')
+        } else {
+            console.error(result.error)
+        }
     }
 
     if (loading) {
@@ -33,10 +69,30 @@ const Home = () => {
             <header className='page-header'>
                 <h1>Create Your Custom <span className='highlight'>Interview Plan</span></h1>
                 <p>Let our AI analyze the job requirements and your unique profile to build a winning strategy.</p>
+                <div className="home-logout">
+                    <span className="home-logout__welcome">
+                        {user ? `Logged in as ${user.username}` : ""}
+                    </span>
+                    <button className="button primary-button home-logout__btn" onClick={handleLogoutClick}>
+                        Logout
+                    </button>
+                </div>
             </header>
 
             {/* Main Card */}
             <div className='interview-card'>
+                {error && (
+                    <div style={{
+                        margin: "1rem 1rem 0",
+                        padding: "0.6rem 0.75rem",
+                        borderRadius: "0.5rem",
+                        background: "rgba(225, 3, 77, 0.1)",
+                        color: "#e1034d",
+                        fontSize: "0.85rem"
+                    }}>
+                        {error}
+                    </div>
+                )}
                 <div className='interview-card__body'>
 
                     {/* Left Panel - Job Description */}
@@ -80,8 +136,8 @@ const Home = () => {
                                     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16" /><line x1="12" y1="12" x2="12" y2="21" /><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" /></svg>
                                 </span>
                                 <p className='dropzone__title'>Click to upload or drag &amp; drop</p>
-                                <p className='dropzone__subtitle'>PDF or DOCX (Max 5MB)</p>
-                                <input ref={resumeInputRef} hidden type='file' id='resume' name='resume' accept='.pdf,.docx' />
+                                <p className='dropzone__subtitle'>PDF file (Max 3MB) — or use the self description below</p>
+                                <input ref={resumeInputRef} hidden type='file' id='resume' name='resume' accept='.pdf,application/pdf' />
                             </label>
                         </div>
 

@@ -1,5 +1,6 @@
 import React,{useState} from 'react'
 import { useNavigate, Link } from 'react-router'
+import "../auth.form.scss"
 import { useAuth } from '../hooks/useAuth'
 
 const Register = () => {
@@ -8,18 +9,37 @@ const Register = () => {
     const [ username, setUsername ] = useState("")
     const [ email, setEmail ] = useState("")
     const [ password, setPassword ] = useState("")
+    const [ error, setError ] = useState("")
 
     const {loading,handleRegister} = useAuth()
-    
+
     const handleSubmit = async (e) => {
         e.preventDefault()
-        await handleRegister({username,email,password})
-        navigate("/")
+
+        // Clear any previous attempt's error message.
+        setError("")
+
+        // Client-side required-field validation for fast feedback.
+        if (!username || !email || !password) {
+            setError("Please fill in username, email and password.")
+            return
+        }
+
+        if (password.length < 6) {
+            setError("Password must be at least 6 characters long.")
+            return
+        }
+
+        const result = await handleRegister({ username, email, password })
+
+        // Only navigate when registration actually succeeded.
+        if (result.success) {
+            navigate('/')
+        } else {
+            setError(result.error)
+        }
     }
 
-    if(loading){
-        return (<main><h1>Loading.......</h1></main>)
-    }
 
     return (
         <main>
@@ -27,6 +47,8 @@ const Register = () => {
                 <h1>Register</h1>
 
                 <form onSubmit={handleSubmit}>
+
+                    {error && <p className="error-message">{error}</p>}
 
                     <div className="input-group">
                         <label htmlFor="username">Username</label>
@@ -47,7 +69,9 @@ const Register = () => {
                             type="password" id="password" name='password' placeholder='Enter password' />
                     </div>
 
-                    <button className='button primary-button' >Register</button>
+                    <button className='button primary-button' disabled={loading}>
+                        {loading ? "Registering..." : "Register"}
+                    </button>
 
                 </form>
 
